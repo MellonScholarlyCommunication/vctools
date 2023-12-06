@@ -1,0 +1,39 @@
+{
+  "dependencies": {
+    "@transmute/did-web": "^0.7.0-unstable.81",
+    "commander": "^11.1.0",
+    "crypto": "^1.0.1",
+    "did-jwt": "^7.4.5",
+    "did-jwt-vc": "^3.2.14",
+    "did-resolver": "^4.1.0",
+    "elliptic": "^6.5.4",
+    "ethr-did": "^3.0.4",
+    "web-did-resolver": "^2.0.27"
+  },
+  "name": "vctools",
+  "version": "1.0.0",
+  "description": "Command line tools for Verifiable Credential processing",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MellonScholarlyCommunication/vctools.git"
+  },
+  "keywords": [
+    "verifiable",
+    "credentials",
+    "jwt"
+  ],
+  "author": "Patrick Hochstenbach <Patrick Hochstenbach.UGent.be>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MellonScholarlyCommunication/vctools/issues"
+  },
+  "homepage": "https://github.com/MellonScholarlyCommunication/vctools#readme"
+}
