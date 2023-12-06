@@ -39,11 +39,13 @@ program.command('jwt-verify')
   .argument('<did>','did identifier')
   .action(async(jwtPath,did) => {
       const res = await verifyDidJWT(fs.readFileSync(jwtPath,{ encoding: 'utf8' }),did);
-      console.log(`verified: ${res}`);
-      if (res) {
-         process.exit(0);
+
+      if (res && res['verified']) {
+         console.log(`verified: true`);
+         console.log(`issuer: ${res['issuer']}`);
       }
       else {
+         console.log(`verified: false`);
          process.exit(2);
       }
   });
@@ -66,11 +68,13 @@ program.command('vc-verify')
   .action(async(jwtPath) => {
       const vcJwt = fs.readFileSync(jwtPath,{ encoding: 'utf8' });
       const res = await verifyVCJWT(vcJwt);
-      console.log(`verified: ${res}`);
-      if (res) {
-         process.exit(0);
+
+      if (res && res['verified']) {
+         console.log(`verified: true`);
+         console.log(`issuer: ${res['issuer']}`);
       }
       else {
+         console.log(`verified: false`);
          process.exit(2);
       }
   });
@@ -95,11 +99,13 @@ program.command('vc-presentation-verify')
   .action(async(jwtPath) => {
       const vcJwt = fs.readFileSync(jwtPath,{ encoding: 'utf8' });
       const res = await verifyVCPresentationJWT(vcJwt);
-      console.log(`verified: ${res}`);
-      if (res) {
-         process.exit(0);
+
+      if (res && res['verified']) {
+         console.log(`verified: true`);
+         console.log(`issuer: ${res['issuer']}`);
       }
       else {
+         console.log(`verified: false`);
          process.exit(2);
       }
   });
@@ -180,15 +186,10 @@ async function verifyDidJWT(jwt,did) {
          audience: did
       });
 
-      if (verificationResponse) {
-         return verificationResponse['verified'];
-      }
-      else {
-         return false;
-      }
+      return verificationResponse;
    }
    catch (e) {
-      return false;
+      return undefined;
    }
 }
 
@@ -214,15 +215,10 @@ async function verifyVCJWT(vcJwt) {
       const resolver = new Resolver(getResolver());
       const verifiedVC = await didJWTVC.verifyCredential(vcJwt, resolver);
       
-      if (verifiedVC) {
-         return verifiedVC['verified'];
-      }
-      else {
-         return false;
-      }
+      return verifiedVC;
    }
    catch (e) {
-      return false;
+      return undefined;
    }
 }
 
@@ -248,16 +244,11 @@ async function verifyVCPresentationJWT(vcJwt) {
    try {
       const resolver = new Resolver(getResolver());
       const verifiedVC = await didJWTVC.verifyPresentation(vcJwt, resolver);
-      
-      if (verifiedVC) {
-         return verifiedVC['verified'];
-      }
-      else {
-         return false;
-      }
+     
+      return verifiedVC;
    }
    catch (e) {
-      return false;
+      return undefined;
    }
 }
 
