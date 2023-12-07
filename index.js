@@ -14,6 +14,16 @@ program
   .description('VC command line tool')
   .version('1.0.0');
 
+program.command('rsa-gen') 
+   .description('generate rsa public/private key')
+   .argument('<outdir>','output directory')
+   .option('-n, --name <name>','name of key pair', 'rsa')
+   .option('-w, --webid <name>', 'webid', undefined)
+   .option('-f, --format <format>', 'json|ttl', 'ttl')
+   .action(async(outdir,options) => {
+      await createRSA(outdir,options)
+   });
+
 program.command('did')
   .description('create a did')
   .argument('<domain>', 'web domain name')
@@ -111,6 +121,38 @@ program.command('vc-presentation-verify')
   });
 
 program.parse();
+
+async function createRSA(outdir,options) {
+   if (! fs.existsSync(outdir)) {
+      console.log(`generating output directory ${outdir}`);
+      fs.mkdirSync(outdir);
+   }
+   const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
+      // The standard secure default length for RSA keys is 2048 bits
+      modulusLength: 2048
+   });
+   const pubKey = publicKey.export({type: 'spki', format: 'pem'}).toString()
+   const privKey = privateKey.export({type: 'pkcs8', format: 'pem'}).toString()
+   fs.writeFileSync(`${outdir}/${options.name}.pub.pem`,pubKey,{ encoding: 'utf8' });
+   fs.writeFileSync(`${outdir}/${options.name}.priv.pem`,privKey,{ encoding: 'utf8' });
+   if (options.webid) {
+      if (options.format === 'json') {
+         console.log(JSON.stringify({
+            "publicKey": {
+               "id": "https://my-example.com/actor#main-key",
+               "owner": "https://my-example.com/actor",
+               "publicKeyPem": pubKey
+            }
+         },null,4));
+      }
+      else {
+         const truncWebid = options.webid.replace(/\#.*$/g,'');
+         console.log(`    <https://w3id.org/security#publicKey> <${truncWebid}#main-key> .`);
+         console.log(`<${truncWebid}#main-key> <https://w3id.org/security#owner> <${options.webid}> .`);
+         console.log(`<${truncWebid}#main-key> <https://w3id.org/security#publicKeyPem> '''${pubKey}''' .`);
+      }
+   }
+}
 
 async function createDid(domain,outdir) {
    if (! fs.existsSync(outdir)) {
