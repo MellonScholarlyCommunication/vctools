@@ -24,6 +24,38 @@ program.command('rsa-gen')
       await createRSA(outdir,options)
    });
 
+program.command('rsa-sign')
+   .description('sign a text input with a private key')
+   .argument('<file>','data to be signed')
+   .option('--priv <rsa.priv>','private key')
+   .action(async(file,options) => {
+      const data = fs.readFileSync(file,{ encoding: 'utf8'} );
+      const key  = fs.readFileSync(options.priv,{ encoding: 'utf8'} );
+      const signature = await createRSASignature(data,key);
+      process.stdout.write(signature.toString('base64'));
+   });
+
+program.command('rsa-verify')
+   .description('verify a signature for a text input')
+   .argument('<file>','data to be verified')
+   .argument('<signature>','signature')
+   .option('--pub <rsa.pub>','public key')
+   .action(async(file,signature,options) => {
+      const data = fs.readFileSync(file,{ encoding: 'utf8'} );
+      const b64  = fs.readFileSync(signature,{ encoding: 'utf8' } );
+      const key  = fs.readFileSync(options.pub,{ encoding: 'utf8'} );
+      const sig  = Buffer.from(b64, 'base64')
+      const res = await verifyRSA(data,sig,key);
+      if (res) {
+         console.log("verified: true");
+         process.exit(0);
+      }
+      else {
+         console.log("verified: false");
+         process.exit(2);
+      }
+   });
+
 program.command('did')
   .description('create a did')
   .argument('<domain>', 'web domain name')
@@ -152,6 +184,17 @@ async function createRSA(outdir,options) {
          console.log(`<${truncWebid}#main-key> <https://w3id.org/security#publicKeyPem> '''${pubKey}''' .`);
       }
    }
+}
+
+async function createRSASignature(data,key) {
+   const algorithm = "SHA256";
+   let signature = crypto.sign(algorithm, Buffer.from(data), key);
+   return signature;
+}
+
+async function verifyRSA(data,signature,key) {
+   const algorithm = "SHA256";
+   return crypto.verify(algorithm, Buffer.from(data), key, signature);
 }
 
 async function createDid(domain,outdir) {
