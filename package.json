@@ -8,6 +8,7 @@
     "did-resolver": "^4.1.0",
     "elliptic": "^6.5.4",
     "ethr-did": "^3.0.4",
+    "node-fetch": "^1.7.1",
     "web-did-resolver": "^2.0.27"
   },
   "name": "vctools",

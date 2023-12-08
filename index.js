@@ -5,6 +5,7 @@ const didJWT = require("did-jwt");
 const didJWTVC = require("did-jwt-vc");
 const { Resolver } = require('did-resolver');
 const { getResolver } = require('web-did-resolver');
+const fetch = require('node-fetch');
 const fs = require('fs');
 
 const program = new Command();
@@ -55,6 +56,27 @@ program.command('rsa-verify')
          process.exit(2);
       }
    });
+
+program.command('fetch-signed')
+  .description('fetch using a signature')
+  .argument('<url>','a URL')
+  .option('--priv <rsa.priv>','private key')
+  .option('-w,--webid <webid>','webid')
+  .action(async(url,options) => {
+      const key = fs.readFileSync(options.priv,{ encoding: 'utf8'} );
+      const res = await fetchSigned(url,key,options.webid);
+
+      if (res) {
+         if (res.ok) {
+            console.log(await res.text());
+            process.exit(0);
+         }
+         else {
+            console.log(await res.text());
+            process.exit(1);
+         }
+      }
+  });
 
 program.command('did')
   .description('create a did')
@@ -195,6 +217,32 @@ async function createRSASignature(data,key) {
 async function verifyRSA(data,signature,key) {
    const algorithm = "SHA256";
    return crypto.verify(algorithm, Buffer.from(data), key, signature);
+}
+
+async function fetchSigned(url,key,webid) {
+   const date   = new Date().toUTCString();
+   const urlObj = new URL(url);
+   const host   = urlObj.host;
+   const path   = urlObj.pathname;
+   const method = 'GET';
+
+   const sigTest = 
+      "(request-target): " + method + " " + path + "\n" +
+      "host: " + host + "\n" +
+      "date: " + date + "\n";
+
+   const signature = await createRSASignature(sigTest,key);
+   const signature_b64 = signature.toString('base64');
+
+   const res = await fetch(url, {
+      headers: {
+         host: host,
+         date: date,
+         signature: `keyId=${webid},signature=${signature_b64}`
+      }
+   });
+
+   return res;
 }
 
 async function createDid(domain,outdir) {
