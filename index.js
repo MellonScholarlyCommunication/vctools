@@ -238,7 +238,7 @@ async function fetchSigned(url,key,webid) {
       headers: {
          host: host,
          date: date,
-         signature: `keyId=${webid},signature=${signature_b64}`
+         signature: `webId="${webid}",signature="${signature_b64}"`
       }
    });
 
