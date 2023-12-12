@@ -5,7 +5,7 @@ const didJWT = require("did-jwt");
 const didJWTVC = require("did-jwt-vc");
 const { Resolver } = require('did-resolver');
 const { getResolver } = require('web-did-resolver');
-const fetch = require('node-fetch');
+const mime = require('mime-types');
 const fs = require('fs');
 
 const program = new Command();
@@ -57,25 +57,28 @@ program.command('rsa-verify')
       }
    });
 
-program.command('fetch-signed')
+program.command('curl-headers')
   .description('fetch using a signature')
   .argument('<url>','a URL')
   .option('--priv <rsa.priv>','private key')
   .option('-w,--webid <webid>','webid')
+  .option('-m,--method <method>','HTTP method','GET')
+  .option('-d,--data <filePath>','File path')
+  .option('-t,--type <mimeType>','Content-type')
   .action(async(url,options) => {
-      const key = fs.readFileSync(options.priv,{ encoding: 'utf8'} );
-      const res = await fetchSigned(url,key,options.webid);
-
-      if (res) {
-         if (res.ok) {
-            console.log(await res.text());
-            process.exit(0);
-         }
-         else {
-            console.log(await res.text());
-            process.exit(1);
+      const key  = fs.readFileSync(options.priv,{ encoding: 'utf8'} );
+      let   data;
+      
+      if (options.data) {
+         data = fs.readFileSync(options.data,{ encoding: 'utf8'} );
+         if (! options.type) {
+            options.type = mime.lookup(options.data);
          }
       }
+
+      const res  = await curlHeaders(url,key,data,options);
+
+      console.log(res);
   });
 
 program.command('did')
@@ -219,30 +222,67 @@ async function verifyRSA(data,signature,key) {
    return crypto.verify(algorithm, Buffer.from(data), key, signature);
 }
 
-async function fetchSigned(url,key,webid) {
-   const date   = new Date().toUTCString();
+async function curlHeaders(url,key,filedata,options) {
+   if (options.method === 'PUT' || options.method === 'POST') {
+      return _doPost(url,key,filedata,options);
+   }
+   else {
+      return _doGet(url,key,filedata,options);
+   }
+}
+
+async function _doGet(url,key,filedata,options) {
    const urlObj = new URL(url);
    const host   = urlObj.host;
    const path   = urlObj.pathname;
-   const method = 'GET';
 
-   const sigTest = 
-      "(request-target): " + method + " " + path + "\n" +
-      "host: " + host + "\n" +
-      "date: " + date + "\n";
+   const date   = new Date().toUTCString();
 
-   const signature = await createRSASignature(sigTest,key);
-   const signature_b64 = signature.toString('base64');
+   const sigTest =
+   "(request-target): " + options.method + " " + path + "\n" +
+   "host: " + host + "\n" +
+   "date: " + date + "\n";
 
-   const res = await fetch(url, {
-      headers: {
-         host: host,
-         date: date,
-         signature: `webId="${webid}",signature="${signature_b64}"`
-      }
-   });
+   const signature = await crypto.sign('SHA256', Buffer.from(sigTest), key);
+   const signature_b64 = signature.toString('base64url');
 
-   return res;
+   const headers =
+        `-H 'Content-Type: ${options.type}' ` + 
+        `-H 'Host: ${host}' ` +
+        `-H 'Date: ${date}' ` +
+        `-H 'Signature: webId="${options.webid}",headers="(request-target) host date",signature="${signature_b64}"'`;
+
+   return headers;
+}
+
+async function _doPost(url,key,filedata,options) {
+   const urlObj = new URL(url);
+   const host   = urlObj.host;
+   const path   = urlObj.pathname;
+
+   const date   = new Date().toUTCString();
+
+   const shasum = crypto.createHash("SHA256");
+   shasum.update(filedata, 'utf8');
+   const digest = `sha256=` + shasum.digest('base64url');
+
+   const sigTest =
+   "(request-target): " + options.method + " " + path + "\n" +
+   "host: " + host + "\n" +
+   "date: " + date + "\n" +
+   "digest: " + digest + "\n";
+
+   const signature = await crypto.sign('SHA256', Buffer.from(sigTest), key);
+   const signature_b64 = signature.toString('base64url');
+
+   const headers =
+       `-H 'Content-Type: ${options.type}' ` + 
+       `-H 'Host: ${host}' ` +
+       `-H 'Date: ${date}' ` +
+       `-H 'Digest: ${digest}' ` +
+       `-H 'Signature: webId="${options.webid}",headers="(request-target) host date digest",signature="${signature_b64}"'`;
+
+   return headers;
 }
 
 async function createDid(domain,outdir) {
