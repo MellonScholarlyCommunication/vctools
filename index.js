@@ -70,7 +70,7 @@ program.command('curl-headers')
       let   data;
       
       if (options.data) {
-         data = fs.readFileSync(options.data,{ encoding: 'utf8'} );
+         data = fs.readFileSync(options.data);
          if (! options.type) {
             options.type = mime.lookup(options.data);
          }
@@ -263,8 +263,8 @@ async function _doPost(url,key,filedata,options) {
    const date   = new Date().toUTCString();
 
    const shasum = crypto.createHash("SHA256");
-   shasum.update(filedata, 'utf8');
-   const digest = `sha256=` + shasum.digest('base64url');
+   shasum.update(filedata);
+   const digest = `sha256=` + shasum.digest('base64');
 
    const sigTest =
    "(request-target): " + options.method + " " + path + "\n" +
@@ -273,7 +273,7 @@ async function _doPost(url,key,filedata,options) {
    "digest: " + digest + "\n";
 
    const signature = await crypto.sign('SHA256', Buffer.from(sigTest), key);
-   const signature_b64 = signature.toString('base64url');
+   const signature_b64 = signature.toString('base64');
 
    const headers =
        `-H 'Content-Type: ${options.type}' ` + 
